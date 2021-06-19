@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_restful import Resource, Api, reqparse
 from anime_scraper import AnimeScraper, SearchResultNotFound
+from os import environ
 
 app = Flask(__name__)
 api = Api(app)
@@ -85,5 +86,5 @@ class Episode(Resource):
 if __name__ == '__main__':
     api.add_resource(SearchResults, '/search')
     api.add_resource(AnimeInfo, '/anime')
-    app.run()
+    app.run(environ.get('PORT'))
 
