@@ -61,7 +61,7 @@ class Episode(Resource):
 
         parser.add_argument('animeName', required=True)
         parser.add_argument('searchIndex', required=True)
-        parser.add_argument('epNum', required=False, default=0)
+        parser.add_argument('epNum', required=False, default=1)
 
         args = parser.parse_args()
 
