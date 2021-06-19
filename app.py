@@ -86,5 +86,5 @@ class Episode(Resource):
 if __name__ == '__main__':
     api.add_resource(SearchResults, '/search')
     api.add_resource(AnimeInfo, '/anime')
-    app.run(environ.get('PORT'))
+    app.run(port=environ.get('PORT'))
 
