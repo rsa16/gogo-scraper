@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_restful import Resource, Api, reqparse
 from anime_scraper import AnimeScraper, SearchResultNotFound
-from os import environ
+import os
 
 app = Flask(__name__)
 api = Api(app)
