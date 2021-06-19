@@ -66,7 +66,7 @@ class Episode(Resource):
         args = parser.parse_args()
 
         try:
-            result = scraper.get_video_link(args["animeName"], args["epNum"], args["searchIndex"])
+            result = scraper.get_video_link(args["animeName"], int(args["epNum"]), int(args["searchIndex"]))
         except SearchResultNotFound:
             return {
                 "message": f"There is no anime with the name '{args['animeName']}'"
