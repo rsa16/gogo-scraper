@@ -25,7 +25,7 @@ so I suppose I'll leave it as it is. In a way, it may be a bit better not depend
 
 
 from bs4 import BeautifulSoup
-import requests
+import requests, os
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
@@ -109,8 +109,12 @@ class AnimeScraper:
         options = webdriver.ChromeOptions()
         options.add_argument('headless')
         options.add_argument('--ignore-certificate-errors-spki-list')
+        options.add_argument("--disable-dev-shm-usage")
         options.add_argument('--ignore-ssl-errors')
-        driver = webdriver.Chrome(options=options)
+        options.add_argument("--no-sandbox")
+        options.binary_location = os.environ.get("GOOGLE_CHROME_BIN")
+        
+        driver = webdriver.Chrome(options=options, executable_path=os.environ.get("CHROMEDRIVER_PATH"))
         driver.get(ep_page)
         elem = driver.find_element_by_tag_name("video")
         elem.send_keys(Keys.SPACE)
