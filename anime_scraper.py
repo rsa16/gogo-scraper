@@ -25,13 +25,22 @@ so I suppose I'll leave it as it is. In a way, it may be a bit better not depend
 
 
 from bs4 import BeautifulSoup
+from pandas import value_counts
 import requests, os
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from fake_useragent import UserAgent
+
 
 
 # Using Gogoanime, will only work with gogoanime and clones. WARNING: Changing base url to something that isnt gogoanime will break the entire scraper.
-BASE_URL = "https://www1.gogoanime.ai"
+BASE_URL = "https://gogoanime.sk/"
+ADBLOCK_PATH = r'C:\Users\sipne\AppData\Local\Google\Chrome\User Data\Default\Extensions\cjpalhdlnbpafiamejdnhcphjbkeiagm\1.42.4_1'
+AGENT = UserAgent()
 
 class SearchResultNotFound(Exception):
     pass
@@ -94,27 +103,97 @@ class AnimeScraper:
     def get_page_links(self, text:str):
         results = self.get_search_results(text, True)
         results = [BASE_URL + result.split("href=")[1].split("title")[0].replace(" ", "").replace('"', '') for result in results]
-        results = sorted(set(results))
         return results
+
+    def get_video_link_from_download(self, anime_ep_page):
+        # Get download hub
+        r = requests.get(anime_ep_page)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        download_link = str(soup.select_one(".dowloads").a['href'])
+        
+        # A few options, most important is the adblocker, because, you know.
+        options = webdriver.ChromeOptions()
+        options.add_argument('headless')
+        options.add_argument('load-extension=' + ADBLOCK_PATH)
+        options.add_argument(f'user-agent={AGENT.random}')
+        options.add_argument('--ignore-certificate-errors-spki-list')
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument('--ignore-ssl-errors')
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-site-isolation-trials")
+        options.binary_location = os.environ.get("GOOGLE_CHROME_BIN")
+        
+        # Initialize Driver With Options
+        driver = webdriver.Chrome(options=options, executable_path=os.environ.get("CHROMEDRIVER_PATH"))
+
+        # Make sure the mirror links have loaded before we try to find the streamsb link
+        driver.get(download_link)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "mirror_link")))
+
+        # Find stream sb link
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        streams = soup.find_all("div", class_="dowload")
+
+        stream_sb = None
+        for stream in streams:
+            if 'streamsb' in str(stream).lower():
+                stream_sb = stream.a['href']
+                break
+
+        # Click on the high quality version
+        driver.get(stream_sb)
+        elem = driver.find_element(by=By.LINK_TEXT, value="High quality")
+        elem.click()
+
+        # Click the next button, wait until download link appears and pass of page source to bs4 to get ddl link.
+        elem = driver.find_element(by=By.CLASS_NAME, value="g-recaptcha")
+        elem.click()
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Direct Download Link")))
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        driver.quit()
+        links = soup.find_all('a')
+        for link in links:
+            if "download" in str(link).lower():
+                return link["href"]
+    
 
     def get_video_link(self, anime_name: str, episode_number: int, anime_index: int):
         # Reason i use selenium is to load video stream and actually play it in order to capture video url.
         results = self.get_page_links(anime_name)
         anime_page = results[anime_index]
         anime_ep_page = BASE_URL + anime_page.split("category")[1] + f"-episode-{episode_number}"
-        r = requests.get(anime_ep_page)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        print(anime_ep_page)
-        ep_page = "https://" + str(soup.iframe).split("src=")[1].split('>')[0].replace('"', '')
         options = webdriver.ChromeOptions()
+
+
+        #Options
         options.add_argument('headless')
+        options.add_argument(f'user-agent={AGENT.random}')
         options.add_argument('--ignore-certificate-errors-spki-list')
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument('--ignore-ssl-errors')
         options.add_argument("--no-sandbox")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-site-isolation-trials")
         options.binary_location = os.environ.get("GOOGLE_CHROME_BIN")
         
+        # Initialize Driver With Options
         driver = webdriver.Chrome(options=options, executable_path=os.environ.get("CHROMEDRIVER_PATH"))
+        driver.set_page_load_timeout(5)
+
+        # Choose exploitable server (mp4upload) and if can't find, stream from download link instead
+        try:
+            driver.get(anime_ep_page)
+        except TimeoutException:
+            return self.get_video_link_from_download(anime_ep_page)
+        elem = driver.find_element_by_class_name("mp4upload")
+        elem.click()
+
+        # Find iframe source
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        ep_page = "https:" + str(soup.iframe).split("src=")[1].split('>')[0].replace('"', '')
+
+        # Play video to load stream url and use bs4 to capture
         driver.get(ep_page)
         elem = driver.find_element_by_tag_name("video")
         elem.send_keys(Keys.SPACE)
@@ -124,9 +203,9 @@ class AnimeScraper:
 
     def get_anime_info(self, anime_name:str, anime_index: int):
         page_links = self.get_page_links(anime_name)
-        print(anime_index)
-        print(page_links)
-        print(anime_name)
+        #print(anime_index)
+        #print(page_links)
+        #print(anime_name)
         page = page_links[anime_index]
         r = requests.get(page)
         soup = BeautifulSoup(r.content, "html.parser")
