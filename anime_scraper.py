@@ -25,7 +25,6 @@ so I suppose I'll leave it as it is. In a way, it may be a bit better not depend
 
 
 from bs4 import BeautifulSoup
-from pandas import value_counts
 import requests, os
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -35,11 +34,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from fake_useragent import UserAgent
 
-
-
 # Using Gogoanime, will only work with gogoanime and clones. WARNING: Changing base url to something that isnt gogoanime will break the entire scraper.
 BASE_URL = "https://gogoanime.sk/"
-ADBLOCK_PATH = r'C:\Users\sipne\AppData\Local\Google\Chrome\User Data\Default\Extensions\cjpalhdlnbpafiamejdnhcphjbkeiagm\1.42.4_1'
+ADBLOCK_PATH = os.path.join(getcwd(), "/adblock")
 AGENT = UserAgent()
 
 class SearchResultNotFound(Exception):
@@ -113,7 +110,7 @@ class AnimeScraper:
         
         # A few options, most important is the adblocker, because, you know.
         options = webdriver.ChromeOptions()
-        options.add_argument('headless')
+        # options.add_argument('headless')
         options.add_argument('load-extension=' + ADBLOCK_PATH)
         options.add_argument(f'user-agent={AGENT.random}')
         options.add_argument('--ignore-certificate-errors-spki-list')
@@ -167,7 +164,7 @@ class AnimeScraper:
 
 
         #Options
-        options.add_argument('headless')
+        # options.add_argument('headless')
         options.add_argument(f'user-agent={AGENT.random}')
         options.add_argument('--ignore-certificate-errors-spki-list')
         options.add_argument("--disable-dev-shm-usage")
@@ -269,4 +266,5 @@ Status: {results['status']}
 Other Name(s): {results['other_name']}
 
 """)
+
     
